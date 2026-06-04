@@ -7,41 +7,8 @@ import { sendNotification } from '../services/send.notification';
 import webpush from '../services/push.service';
 
 export const getRides = async (req: Request, res: Response) => {
-  // Update all rides in the system that are PENDING and latestDeparture < now to COMPLETED
-  const now = new Date();
-  // Find all rides that need to be completed
-  const ridesToComplete = await prisma.ride.findMany({
-    where: {
-      status: RideStatus.PENDING,
-      latestDeparture: { lt: now }
-    },
-    include: {
-      participants: { select: { id: true } },
-      owner: { select: { id: true, name: true } }
-    }
-  });
-
-  // Update their status and send notifications
-  for (const ride of ridesToComplete) {
-    await prisma.ride.update({
-      where: { id: ride.id },
-      data: { status: RideStatus.COMPLETED }
-    });
-
-
-
-
-    // Notify all participants (including owner)
-    const allUserIds = [ride.owner.id, ...ride.participants.map(p => p.id)];
-    await prisma.notification.createMany({
-      data: allUserIds.map(uid => ({
-        receiverId: uid,
-        message: `${ride.owner.name} ride has been automatically marked as completed.`
-      }))
-    });
-
-
-  }
+ 
+ 
 
   const userId = req.userId!;
   const rides = await prisma.ride.findMany({
@@ -172,14 +139,29 @@ export const createRide = async (req: Request, res: Response) => {
     return;
   }
 
-  if (earliestDeparture > latestDeparture) {
-    res.status(400).json({ data: null, error: 'Earliest departure must be before latest departure' });
-    return;
-  }
-
-  // Convert the ISO date strings to Date objects
   const earliestDepartureDate = new Date(earliestDeparture);
-  const latestDepartureDate = new Date(latestDeparture);
+const latestDepartureDate = new Date(latestDeparture);
+
+if (
+  isNaN(earliestDepartureDate.getTime()) ||
+  isNaN(latestDepartureDate.getTime())
+) {
+  res.status(400).json({
+    data: null,
+    error: 'Invalid departure date'
+  });
+  return;
+}
+
+if (earliestDepartureDate > latestDepartureDate) {
+  res.status(400).json({
+    data: null,
+    error: 'Earliest departure must be before latest departure'
+  });
+  return;
+}
+
+  
 
   if (isNaN(earliestDepartureDate.getTime())) {
     res.status(400).json({ data: null, error: 'Invalid earliest departure date' });
@@ -201,15 +183,7 @@ export const createRide = async (req: Request, res: Response) => {
     return;
   }
 
-  // Before creating a new ride, update all rides in the system that are PENDING and latestDeparture < now to COMPLETED
-  const now = new Date();
-  await prisma.ride.updateMany({
-    where: {
-      status: RideStatus.PENDING,
-      latestDeparture: { lt: now }
-    },
-    data: { status: RideStatus.COMPLETED }
-  });
+ 
 
   try {
     const ride = await prisma.ride.create({
@@ -255,14 +229,27 @@ export const createRide = async (req: Request, res: Response) => {
 
 
     const payload = JSON.stringify({
-      title: "New Ride Available 🚗",
-      body: `${user?.name || 'A user'} created a new ride for ${stops[0].name} to ${stops[stops.length - 1].name}.`,
+      title: "🚗 New Ride Available",
+      body: `${user?.name || 'A user'} is offering a ride from ${stops[0].name} to ${stops[stops.length - 1].name}. ${ride.peopleCount} seats available.`,
       url: "/",
       icon: "/icons/logo.png",
       badge: "/icons/logo.png",
     });
+   
 
-    sendNotification(AllUsers.map(u => u.id).filter(id => id !== userId), payload);
+const recipientIds = AllUsers.map(u => u.id);
+    await prisma.notification.createMany({
+  data: recipientIds.map(id => ({
+    receiverId: id,
+    message: `${user?.name || 'A user'} is offering a ride from ${
+      stops[0].name
+    } to ${
+      stops[stops.length - 1].name
+    }. ${ride.peopleCount} seats available.`
+  }))
+});
+    void sendNotification(recipientIds, payload)
+  .catch(console.error);
 
 
 
@@ -349,7 +336,7 @@ export const cancelRide = async (req: Request, res: Response) => {
 
 
 
-    await prisma.ride.update({
+    await tx.ride.update({
       where: {
         id: ride.id
       },
@@ -366,8 +353,8 @@ export const cancelRide = async (req: Request, res: Response) => {
   });
 
   const payload = JSON.stringify({
-    title: "Ride Cancelled 😞",
-    body: `${ride.owner?.name || 'Ride Owner'} cancelled the ride .Reason: ${reason}`,
+    title: "⛔ Ride Cancelled",
+    body: `The ride has been cancelled. Reason: ${reason}`,
     url: "/",
     icon: "/icons/logo.png",
       badge: "/icons/logo.png",
@@ -423,8 +410,8 @@ export const completeRide = async (req: Request, res: Response) => {
 
 
     const payload = JSON.stringify({
-      title: "Ride Completed ✅",
-      body: `${ride.owner?.name || 'Ride Owner'} marked the ride as completed.`,
+      title: "✅ Ride Completed",
+      body: `Great! The ride has been completed. Thanks for using Ride NITT!`,
       url: "/",
       icon: "/icons/logo.png",
       badge: "/icons/logo.png",

@@ -180,11 +180,10 @@ export const sendInvite = async (req: Request, res: Response) => {
   })
 
   const payload = JSON.stringify({
-    title: "New Ride Invite",
-    body: `${user.name} has sent you a ride request.`,
+    title: "🚗 New Ride Request",
+    body: `${user.name} wants to join your ride. Tap to review the request.`,
     icon: "/icons/logo.png",
-      badge: "/icons/logo.png",
-
+    badge: "/icons/logo.png"
   });
   sendNotification([ride.ownerId], payload);
 
@@ -337,15 +336,15 @@ let notifyParticipantsIds: string[] = [];
 
   })
    sendNotification(notifyParticipantsIds, JSON.stringify({
-      title: "Invite Accepted 🎉",
-      body: `${invite.sender.name} joined the ride by ${ride.owner.name}`,
+      title: "✅ Rider Joined Your Ride",
+      body: `${invite.sender.name} has joined the ride. ${ride.participants.length}/${ride.peopleCount} seats filled.`,
       url: `/requests`,
       icon: "/icons/logo.png",
       badge: "/icons/logo.png",
     }));
     sendNotification([invite.sender.id], JSON.stringify({
-      title: "Invite Accepted 🎉",
-      body: `Your invite to the ride by ${ride.owner.name} was accepted`,
+      title: "✅ Request Accepted",
+      body: `${ride.owner.name} accepted your ride request. You're in!`,
       url: `/requests`,
       icon: "/icons/logo.png",
       badge: "/icons/logo.png",
@@ -510,8 +509,8 @@ let notifyUserIds: string[] = [];
         if(notifyUserIds.includes(invite.sender.id) === false){
           notifyUserIds.push(invite.sender.id);
           sendNotification(notifyUserIds, JSON.stringify({
-            title: "Invite Declined ❌",
-            body: `Your invite to the ride by ${ride.owner.name} was declined. Reason: ${reason}`,
+            title: "❌ Request Declined",
+            body: `Your ride request was declined. Reason: ${reason}`,
             url: `/requests`,
             icon: "/icons/logo.png",
       badge: "/icons/logo.png",
@@ -519,8 +518,8 @@ let notifyUserIds: string[] = [];
         }
         else{
           sendNotification([invite.sender.id], JSON.stringify({
-            title: "Removed from the Ride 😔",
-            body: `You were removed from the ride by ${ride.owner.name}. Reason: ${reason}`,
+            title: "ℹ️ Removed from Ride",
+            body: `You were removed from the ride. Reason: ${reason}`,
             url: `/requests`,
             icon: "/icons/logo.png",
       badge: "/icons/logo.png",
@@ -531,8 +530,8 @@ let notifyUserIds: string[] = [];
         notifyUserIds = notifyUserIds.filter(id => id !== invite.sender.id);
         notifyUserIds.push(ride.owner.id);
  sendNotification(notifyUserIds, JSON.stringify({
-        title: "Left Ride ❌",
-        body: `${invite.sender.name} left your ride. Reason: ${reason}`,
+        title: "👤 Rider Left",
+        body: `${invite.sender.name} left the ride. Reason: ${reason}`,
         url: `/requests`,
         icon: "/icons/logo.png",
       badge: "/icons/logo.png",
