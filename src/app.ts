@@ -15,6 +15,7 @@ config({
 const app = express()
 const allowedOrigins = [
   process.env.FRONTEND_URL,
+  "https://accounts.google.com",
   "http://localhost:5173",
   "http://127.0.0.1:5173",
   "https://ridenittfrontend-298477500939.asia-southeast1.run.app",
