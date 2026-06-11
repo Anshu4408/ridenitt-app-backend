@@ -28,8 +28,8 @@ export const postNotifications = async (req: Request, res: Response) : Promise<v
 
   const sub = req.body;
 
-  // Basic payload validation to avoid runtime errors
-  if (!sub || typeof sub !== "object" || !sub.endpoint || !sub.keys || !sub.keys.p256dh || !sub.keys.auth) {
+  // Basic payload validation: require at least endpoint (for both Web Push & Expo Push)
+  if (!sub || typeof sub !== "object" || !sub.endpoint) {
     res.status(400).json({ error: "Invalid subscription payload", data: null });
     return;
   }
@@ -47,8 +47,8 @@ export const postNotifications = async (req: Request, res: Response) : Promise<v
       data: {
         userId: req.userId!,
         endpoint: sub.endpoint,
-        p256dh: sub.keys.p256dh,
-        auth: sub.keys.auth,
+        p256dh: sub.keys?.p256dh || "",
+        auth: sub.keys?.auth || "",
       },
     });
 

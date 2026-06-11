@@ -79,18 +79,43 @@ export const sendNotification = async (
   await Promise.allSettled(
     subscriptions.map(async (sub) => {
       try {
-        await webpush.sendNotification(
-          {
-            endpoint: sub.endpoint,
-            keys: {
-              p256dh: sub.p256dh,
-              auth: sub.auth,
+        if (sub.endpoint.startsWith("ExponentPushToken") || sub.endpoint.startsWith("ExpoPushToken")) {
+          // Route to Expo Push Notifications API
+          const response = await fetch("https://exp.host/--/api/v2/push/send", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Accept": "application/json",
+              "Accept-encoding": "gzip, deflate",
             },
-          },
-          JSON.stringify(finalPayload)
-        );
+            body: JSON.stringify({
+              to: sub.endpoint,
+              title: finalPayload.title,
+              body: finalPayload.body,
+              data: { url: finalPayload.url },
+              sound: "default",
+            }),
+          });
+
+          if (!response.ok) {
+            const errResult = await response.json().catch(() => ({}));
+            console.error("Expo push notification failed response:", errResult);
+          }
+        } else {
+          // Standard web push
+          await webpush.sendNotification(
+            {
+              endpoint: sub.endpoint,
+              keys: {
+                p256dh: sub.p256dh,
+                auth: sub.auth,
+              },
+            },
+            JSON.stringify(finalPayload)
+          );
+        }
       } catch (err: any) {
-        // Clean up invalid subscriptions
+        // Clean up invalid subscriptions for web push
         if (err.statusCode === 410 || err.statusCode === 404) {
           await prisma.pushSubscription.delete({
             where: { id: sub.id },
