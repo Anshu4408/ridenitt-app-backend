@@ -1,16 +1,12 @@
 import express from "express";
 import helmet from "helmet";
 import cors from "cors";
-import { config } from "dotenv";
+import "./config";
 import cookieParser from "cookie-parser";
 import router from "./router";
-import "./services/push.service"
+import "./services/push.service";
 import { startRideCompletionJob } from './jobs/completeExpiredRides';
 
-
-config({
-  path: ".env.local"
-})
 
 const app = express()
 const allowedOrigins = [

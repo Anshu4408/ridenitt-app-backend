@@ -1,4 +1,4 @@
-import webpush from "web-push";
+import webpush from "./push.service";
 import { prisma } from "../prisma";
 
 interface NotificationPayload {
