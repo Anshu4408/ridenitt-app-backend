@@ -2,8 +2,9 @@ import { NextFunction, Request, Response } from "express";
 import { createAccessToken, verifyAccessToken, verifyRefreshToken } from '../services/auth.service';
 
 export const authMiddleware = async (req: Request, res: Response, next: NextFunction) => {
-  const accessToken = req.cookies["access-token"];
-  const refreshToken = req.cookies["refresh-token"];
+  const authHeader = req.headers["authorization"];
+  const accessToken = req.cookies["access-token"] || (authHeader && authHeader.startsWith("Bearer ") ? authHeader.substring(7) : undefined) || req.headers["x-access-token"];
+  const refreshToken = req.cookies["refresh-token"] || req.headers["x-refresh-token"];
 
   if (!accessToken || !refreshToken) {
     res.status(401).json({
@@ -14,10 +15,10 @@ export const authMiddleware = async (req: Request, res: Response, next: NextFunc
     return;
   }
 
-  let payload = await verifyAccessToken(accessToken);
+  let payload = await verifyAccessToken(accessToken as string);
   
   if (!payload) {
-    payload = await verifyRefreshToken(refreshToken);
+    payload = await verifyRefreshToken(refreshToken as string);
 
     if (!payload) {
       res.status(401).json({
@@ -28,7 +29,9 @@ export const authMiddleware = async (req: Request, res: Response, next: NextFunc
       return;
     }
 
-    const newAccessToken = createAccessToken(payload.userId);
+    const newAccessToken = await createAccessToken(payload.userId);
+
+    res.setHeader("x-new-access-token", newAccessToken);
 
     res.cookie("access-token", newAccessToken, {
       httpOnly: false,

@@ -17,7 +17,7 @@ passport.use(
       try {
         const email = profile.emails![0].value;
         const name = profile.displayName
-  
+
         const user = await prisma.user.upsert({
           where: {
             email
@@ -37,10 +37,14 @@ passport.use(
   )
 );
 
-export const googleAuth = passport.authenticate("google", {
-  session: false,
-  scope: ["profile", "email"]
-});
+export const googleAuth = (req: Request, res: Response, next: any) => {
+  const state = req.query.state as string || '';
+  passport.authenticate("google", {
+    session: false,
+    scope: ["profile", "email"],
+    state: state
+  })(req, res, next);
+};
 
 export const googleAuthCallback = (req: Request, res: Response, next: any) => {
   passport.authenticate('google', {
@@ -67,38 +71,68 @@ export const afterOAuthLogin = async (req: Request, res: Response) => {
     res.redirect("/login");
     return;
   }
-  
+
   const refreshToken = await createRefreshToken(user.id);
   const accessToken = await createAccessToken(user.id);
 
   res.cookie("refresh-token", refreshToken, {
+
     httpOnly: true,
-        // secure: process.env.NODE_ENV === "production",
-    secure: false, // Always false for local
-    sameSite: "lax", // Lax for local
-    // domain: undefined, // Do not set domain for localhost
-    expires: new Date(Date.now() + 1000*60*60*24*28)
+
+    secure: true,
+
+    sameSite: "none",
+
+    expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 28),
+
   });
 
   res.cookie("access-token", accessToken, {
+
     httpOnly: false,
-        // secure: process.env.NODE_ENV === "production",
-    secure: false, // Always false for local
-    sameSite: "lax", // Lax for local
-    // domain: undefined, // Do not set domain for localhost
-    expires: new Date(Date.now() + 1000*60*60)
+
+    secure: true,
+
+    sameSite: "none",
+
+    expires: new Date(Date.now() + 1000 * 60 * 60),
+
   });
+
+  const state = req.query.state as string || '';
+  if (state === 'mobile_browser') {
+    res.redirect(`ridenitt://mobile-auth?accessToken=${accessToken}&refreshToken=${refreshToken}`);
+    return;
+  }
+
+  if (state === 'mobile') {
+    res.redirect(`${FRONTEND_URL}/mobile-auth?accessToken=${accessToken}&refreshToken=${refreshToken}`);
+    return;
+  }
 
   if (user.gender && user.phoneNumber) {
     res.redirect(`${FRONTEND_URL}/`);
-  } else { 
+  } else {
     res.redirect(`${FRONTEND_URL}/sign-up`)
   }
 }
 
 export const logout = async (req: Request, res: Response) => {
-  res.clearCookie('access-token');
-  res.clearCookie('refresh-token');
+  res.clearCookie("access-token", {
+
+  secure: true,
+
+  sameSite: "none",
+
+});
+
+res.clearCookie("refresh-token", {
+
+  secure: true,
+
+  sameSite: "none",
+
+});
 
   res.json({
     data: null,
