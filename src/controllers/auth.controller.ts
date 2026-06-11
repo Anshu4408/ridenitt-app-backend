@@ -99,13 +99,22 @@ export const afterOAuthLogin = async (req: Request, res: Response) => {
 
   });
 
-  const state = req.query.state as string || '';
-  if (state === 'mobile_browser') {
-    res.redirect(`ridenitt://mobile-auth?accessToken=${accessToken}&refreshToken=${refreshToken}`);
-    return;
+  const stateStr = req.query.state as string || '';
+  try {
+    const stateObj = JSON.parse(decodeURIComponent(stateStr));
+    if (stateObj && stateObj.type === 'mobile_browser' && stateObj.redirect) {
+      res.redirect(`${stateObj.redirect}?accessToken=${accessToken}&refreshToken=${refreshToken}`);
+      return;
+    }
+  } catch (err) {
+    // Fallback if state is a plain string
+    if (stateStr === 'mobile_browser') {
+      res.redirect(`ridenitt://mobile-auth?accessToken=${accessToken}&refreshToken=${refreshToken}`);
+      return;
+    }
   }
 
-  if (state === 'mobile') {
+  if (stateStr === 'mobile') {
     res.redirect(`${FRONTEND_URL}/mobile-auth?accessToken=${accessToken}&refreshToken=${refreshToken}`);
     return;
   }
